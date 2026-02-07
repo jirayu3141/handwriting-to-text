@@ -1,0 +1,22 @@
+{
+	"name": "journal-ocr",
+	"version": "1.0.0",
+	"description": "Obsidian plugin: OCR handwritten journal pages with Google Gemini",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "node esbuild.config.mjs production",
+		"copy-assets": "cp manifest.json styles.css \"$VAULT_PLUGIN_DIR/\""
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"builtin-modules": "^3.3.0",
+		"esbuild": "^0.20.0",
+		"obsidian": "latest",
+		"tslib": "2.6.2",
+		"typescript": "5.3.3"
+	}
+}

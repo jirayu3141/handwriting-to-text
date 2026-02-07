@@ -1,0 +1,9 @@
+{
+	"id": "journal-ocr",
+	"name": "Journal OCR",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Photograph handwritten journal pages and transcribe them into your notes using Google Gemini AI.",
+	"author": "jisirivorawo",
+	"isDesktopOnly": false
+}
