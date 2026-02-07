@@ -1,17 +1,17 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
-import type JournalOcrPlugin from "./main";
+import type HandwritingToTextPlugin from "./main";
 
-export interface JournalOcrSettings {
+export interface HandwritingToTextSettings {
 	geminiApiKey: string;
 	model: string;
 	ocrPrompt: string;
 }
 
-export const DEFAULT_SETTINGS: JournalOcrSettings = {
+export const DEFAULT_SETTINGS: HandwritingToTextSettings = {
 	geminiApiKey: "",
 	model: "gemini-2.5-flash",
 	ocrPrompt:
-		"You are an expert at reading handwritten text from journal pages. " +
+		"You are an expert at reading handwritten text. " +
 		"Transcribe the handwritten content in this image into clean, readable markdown text. " +
 		"Join words that continue on the next line into flowing sentences — do NOT insert line breaks just because the handwriting reaches the edge of the page. " +
 		"Only start a new paragraph when the writer clearly intended one (e.g. a blank line, large gap, or new topic). " +
@@ -29,10 +29,10 @@ const GEMINI_MODELS: Record<string, string> = {
 	"gemini-2.5-pro": "Gemini 2.5 Pro (high quality, slower)",
 };
 
-export class JournalOcrSettingTab extends PluginSettingTab {
-	plugin: JournalOcrPlugin;
+export class HandwritingToTextSettingTab extends PluginSettingTab {
+	plugin: HandwritingToTextPlugin;
 
-	constructor(app: App, plugin: JournalOcrPlugin) {
+	constructor(app: App, plugin: HandwritingToTextPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}

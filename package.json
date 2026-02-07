@@ -1,7 +1,7 @@
 {
-	"name": "journal-ocr",
+	"name": "handwriting-to-text",
 	"version": "1.0.0",
-	"description": "Obsidian plugin: OCR handwritten journal pages with Google Gemini",
+	"description": "Obsidian plugin: transcribe handwritten pages into text with Google Gemini",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

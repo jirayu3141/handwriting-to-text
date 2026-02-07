@@ -12,7 +12,7 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = process.argv[2] === "production";
 
 const vaultPluginDir =
-	"/Users/jisirivorawo/Library/Mobile Documents/iCloud~md~obsidian/Documents/Notes/.obsidian/plugins/journal-ocr";
+	"/Users/jisirivorawo/Library/Mobile Documents/iCloud~md~obsidian/Documents/Notes/.obsidian/plugins/handwriting-to-text";
 
 // Ensure the output directory exists
 mkdirSync(vaultPluginDir, { recursive: true });

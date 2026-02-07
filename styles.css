@@ -1,9 +1,9 @@
 /* Journal OCR Modal */
-.journal-ocr-modal {
+.hwt-modal {
 	max-width: 600px;
 }
 
-.journal-ocr-modal .modal-content {
+.hwt-modal .modal-content {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
@@ -11,7 +11,7 @@
 }
 
 /* Image Selection State */
-.journal-ocr-drop-zone {
+.hwt-drop-zone {
 	border: 2px dashed var(--background-modifier-border);
 	border-radius: 8px;
 	padding: 40px 20px;
@@ -20,31 +20,31 @@
 	transition: border-color 0.2s, background-color 0.2s;
 }
 
-.journal-ocr-drop-zone:hover,
-.journal-ocr-drop-zone.drag-over {
+.hwt-drop-zone:hover,
+.hwt-drop-zone.drag-over {
 	border-color: var(--interactive-accent);
 	background-color: var(--background-modifier-hover);
 }
 
-.journal-ocr-drop-zone-text {
+.hwt-drop-zone-text {
 	color: var(--text-muted);
 	font-size: 14px;
 }
 
-.journal-ocr-buttons {
+.hwt-buttons {
 	display: flex;
 	gap: 8px;
 	justify-content: center;
 	flex-wrap: wrap;
 }
 
-.journal-ocr-buttons button {
+.hwt-buttons button {
 	flex: 1;
 	min-width: 120px;
 }
 
 /* Processing State */
-.journal-ocr-processing {
+.hwt-processing {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -52,28 +52,28 @@
 	padding: 20px;
 }
 
-.journal-ocr-spinner {
+.hwt-spinner {
 	width: 32px;
 	height: 32px;
 	border: 3px solid var(--background-modifier-border);
 	border-top-color: var(--interactive-accent);
 	border-radius: 50%;
-	animation: journal-ocr-spin 0.8s linear infinite;
+	animation: hwt-spin 0.8s linear infinite;
 }
 
-@keyframes journal-ocr-spin {
+@keyframes hwt-spin {
 	to {
 		transform: rotate(360deg);
 	}
 }
 
-.journal-ocr-processing-text {
+.hwt-processing-text {
 	color: var(--text-muted);
 	font-size: 14px;
 }
 
 /* Image Preview */
-.journal-ocr-image-preview {
+.hwt-image-preview {
 	max-width: 100%;
 	max-height: 200px;
 	object-fit: contain;
@@ -82,13 +82,13 @@
 }
 
 /* Preview/Edit State */
-.journal-ocr-preview {
+.hwt-preview {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 }
 
-.journal-ocr-textarea {
+.hwt-textarea {
 	width: 100%;
 	min-height: 200px;
 	max-height: 400px;
@@ -103,23 +103,23 @@
 	color: var(--text-normal);
 }
 
-.journal-ocr-textarea:focus {
+.hwt-textarea:focus {
 	border-color: var(--interactive-accent);
 	outline: none;
 }
 
-.journal-ocr-actions {
+.hwt-actions {
 	display: flex;
 	gap: 8px;
 	justify-content: flex-end;
 }
 
-.journal-ocr-actions button.mod-cta {
+.hwt-actions button.mod-cta {
 	min-width: 140px;
 }
 
 /* Error State */
-.journal-ocr-error {
+.hwt-error {
 	color: var(--text-error);
 	background-color: var(--background-modifier-error);
 	padding: 12px;

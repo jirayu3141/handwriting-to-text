@@ -31,7 +31,7 @@ export class GeminiClient {
 	): Promise<string> {
 		if (!this.apiKey) {
 			new Notice(
-				"Journal OCR: No API key configured. Please set your Gemini API key in the plugin settings."
+				"Handwriting to Text: No API key configured. Please set your Gemini API key in the plugin settings."
 			);
 			throw new Error("Missing Gemini API key");
 		}

@@ -7,7 +7,7 @@ import {
 	TFile,
 } from "obsidian";
 import { GeminiClient } from "./gemini";
-import type { JournalOcrSettings } from "./settings";
+import type { HandwritingToTextSettings } from "./settings";
 import {
 	arrayBufferToBase64,
 	getMimeType,
@@ -47,7 +47,7 @@ class VaultImagePicker extends FuzzySuggestModal<TFile> {
 type ModalState = "select" | "processing" | "preview";
 
 export class OcrModal extends Modal {
-	private settings: JournalOcrSettings;
+	private settings: HandwritingToTextSettings;
 	private editor: Editor;
 
 	private state: ModalState = "select";
@@ -62,13 +62,13 @@ export class OcrModal extends Modal {
 
 	constructor(
 		app: App,
-		settings: JournalOcrSettings,
+		settings: HandwritingToTextSettings,
 		editor: Editor
 	) {
 		super(app);
 		this.settings = settings;
 		this.editor = editor;
-		this.modalEl.addClass("journal-ocr-modal");
+		this.modalEl.addClass("hwt-modal");
 	}
 
 	onOpen() {
@@ -96,14 +96,14 @@ export class OcrModal extends Modal {
 		this.state = "select";
 		const { contentEl } = this;
 		contentEl.empty();
-		this.setTitle("Scan Journal Page");
+		this.setTitle("Scan Handwriting");
 
 		const container = contentEl.createDiv({
-			cls: "journal-ocr-drop-zone",
+			cls: "hwt-drop-zone",
 		});
 
 		container.createDiv({
-			cls: "journal-ocr-drop-zone-text",
+			cls: "hwt-drop-zone-text",
 			text: "Drop an image here, or use the buttons below",
 		});
 
@@ -137,7 +137,7 @@ export class OcrModal extends Modal {
 		});
 
 		// Buttons
-		const buttons = contentEl.createDiv({ cls: "journal-ocr-buttons" });
+		const buttons = contentEl.createDiv({ cls: "hwt-buttons" });
 
 		const chooseBtn = buttons.createEl("button", { text: "Choose Image" });
 		chooseBtn.addEventListener("click", () => fileInput.click());
@@ -178,7 +178,7 @@ export class OcrModal extends Modal {
 		this.setTitle("Extracting Text...");
 
 		const container = contentEl.createDiv({
-			cls: "journal-ocr-processing",
+			cls: "hwt-processing",
 		});
 
 		// Image thumbnail
@@ -192,7 +192,7 @@ export class OcrModal extends Modal {
 		const objectUrl = URL.createObjectURL(blob);
 
 		const img = container.createEl("img", {
-			cls: "journal-ocr-image-preview",
+			cls: "hwt-image-preview",
 		});
 		img.addEventListener("error", () => {
 			URL.revokeObjectURL(objectUrl);
@@ -200,9 +200,9 @@ export class OcrModal extends Modal {
 		});
 		img.src = objectUrl;
 
-		container.createDiv({ cls: "journal-ocr-spinner" });
+		container.createDiv({ cls: "hwt-spinner" });
 		container.createDiv({
-			cls: "journal-ocr-processing-text",
+			cls: "hwt-processing-text",
 			text: "Sending image to Gemini...",
 		});
 
@@ -235,7 +235,7 @@ export class OcrModal extends Modal {
 		contentEl.empty();
 		this.setTitle("Review Transcription");
 
-		const preview = contentEl.createDiv({ cls: "journal-ocr-preview" });
+		const preview = contentEl.createDiv({ cls: "hwt-preview" });
 
 		// Image thumbnail — hide if the browser can't decode it (e.g. HEIC)
 		if (this.imageBuffer) {
@@ -244,7 +244,7 @@ export class OcrModal extends Modal {
 			});
 			const objectUrl = URL.createObjectURL(blob);
 			const img = preview.createEl("img", {
-				cls: "journal-ocr-image-preview",
+				cls: "hwt-image-preview",
 			});
 			img.addEventListener("error", () => {
 				URL.revokeObjectURL(objectUrl);
@@ -255,7 +255,7 @@ export class OcrModal extends Modal {
 
 		// Editable textarea
 		const textarea = preview.createEl("textarea", {
-			cls: "journal-ocr-textarea",
+			cls: "hwt-textarea",
 		});
 		textarea.value = this.extractedText;
 		textarea.addEventListener("input", () => {
@@ -263,7 +263,7 @@ export class OcrModal extends Modal {
 		});
 
 		// Action buttons
-		const actions = preview.createDiv({ cls: "journal-ocr-actions" });
+		const actions = preview.createDiv({ cls: "hwt-actions" });
 
 		const reExtractBtn = actions.createEl("button", {
 			text: "Re-extract",
@@ -282,7 +282,7 @@ export class OcrModal extends Modal {
 	private insertIntoNote() {
 		this.editor.replaceSelection(this.extractedText);
 		this.close();
-		new Notice("Journal text inserted successfully");
+		new Notice("Text inserted successfully");
 	}
 
 	// ─── Error State ─────────────────────────────────────────────────
@@ -292,10 +292,10 @@ export class OcrModal extends Modal {
 		contentEl.empty();
 		this.setTitle("Error");
 
-		const errorDiv = contentEl.createDiv({ cls: "journal-ocr-error" });
+		const errorDiv = contentEl.createDiv({ cls: "hwt-error" });
 		errorDiv.setText(message);
 
-		const actions = contentEl.createDiv({ cls: "journal-ocr-actions" });
+		const actions = contentEl.createDiv({ cls: "hwt-actions" });
 		actions.style.marginTop = "16px";
 
 		const backBtn = actions.createEl("button", { text: "Back" });

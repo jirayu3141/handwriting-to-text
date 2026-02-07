@@ -1,29 +1,29 @@
 import { Editor, MarkdownView, Notice, Plugin } from "obsidian";
 import {
 	DEFAULT_SETTINGS,
-	JournalOcrSettingTab,
-	type JournalOcrSettings,
+	HandwritingToTextSettingTab,
+	type HandwritingToTextSettings,
 } from "./settings";
 import { OcrModal } from "./ocr-modal";
 
-export default class JournalOcrPlugin extends Plugin {
-	settings: JournalOcrSettings = DEFAULT_SETTINGS;
+export default class HandwritingToTextPlugin extends Plugin {
+	settings: HandwritingToTextSettings = DEFAULT_SETTINGS;
 
 	async onload() {
 		await this.loadSettings();
 
 		// Settings tab
-		this.addSettingTab(new JournalOcrSettingTab(this.app, this));
+		this.addSettingTab(new HandwritingToTextSettingTab(this.app, this));
 
 		// Ribbon icon
-		this.addRibbonIcon("scan", "Scan journal page", () => {
+		this.addRibbonIcon("scan", "Scan handwriting", () => {
 			this.openOcrModal();
 		});
 
 		// Command: Scan from file/camera
 		this.addCommand({
-			id: "scan-journal-page",
-			name: "Scan journal page",
+			id: "scan-handwriting",
+			name: "Scan handwriting",
 			editorCallback: (editor: Editor) => {
 				const modal = new OcrModal(
 					this.app,
