@@ -15,6 +15,11 @@ interface GeminiResponse {
 	};
 }
 
+export interface ImagePart {
+	base64: string;
+	mimeType: string;
+}
+
 export class GeminiClient {
 	private apiKey: string;
 	private model: string;
@@ -29,29 +34,43 @@ export class GeminiClient {
 		mimeType: string,
 		prompt: string
 	): Promise<string> {
+		return this.extractTextFromImages(
+			[{ base64: imageBase64, mimeType }],
+			prompt
+		);
+	}
+
+	/**
+	 * Send multiple images in a single request.
+	 * Gemini supports multiple inline_data parts, so the model
+	 * sees all pages together and can produce a coherent transcription.
+	 */
+	async extractTextFromImages(
+		images: ImagePart[],
+		prompt: string
+	): Promise<string> {
 		if (!this.apiKey) {
 			new Notice(
-				"Handwriting to Text: No API key configured. Please set your Gemini API key in the plugin settings."
+				"No API key configured. Please set your Gemini API key in the plugin settings."
 			);
 			throw new Error("Missing Gemini API key");
 		}
 
 		const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
 
-		const body = {
-			contents: [
-				{
-					parts: [
-						{ text: prompt },
-						{
-							inline_data: {
-								mime_type: mimeType,
-								data: imageBase64,
-							},
-						},
-					],
+		const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+
+		for (const img of images) {
+			parts.push({
+				inline_data: {
+					mime_type: img.mimeType,
+					data: img.base64,
 				},
-			],
+			});
+		}
+
+		const body = {
+			contents: [{ parts }],
 			generationConfig: {
 				temperature: 0.1,
 				maxOutputTokens: 8192,

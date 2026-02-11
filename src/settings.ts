@@ -5,6 +5,8 @@ export interface HandwritingToTextSettings {
 	geminiApiKey: string;
 	model: string;
 	ocrPrompt: string;
+	pageSeparator: string;
+	showPageNumbers: boolean;
 }
 
 export const DEFAULT_SETTINGS: HandwritingToTextSettings = {
@@ -19,14 +21,14 @@ export const DEFAULT_SETTINGS: HandwritingToTextSettings = {
 		"If a word is illegible, write [illegible]. " +
 		"If the writing contains non-English text (such as Thai), transcribe it faithfully. " +
 		"Output only the transcribed text.",
+	pageSeparator: "---",
+	showPageNumbers: true,
 };
 
 const GEMINI_MODELS: Record<string, string> = {
-	"gemini-3-flash-preview": "Gemini 3 Flash (latest, fast)",
-	"gemini-3-pro-preview": "Gemini 3 Pro (best quality)",
 	"gemini-2.5-flash": "Gemini 2.5 Flash (recommended)",
-	"gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite (fastest, cheapest)",
-	"gemini-2.5-pro": "Gemini 2.5 Pro (high quality, slower)",
+	"gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite (fastest)",
+	"gemini-2.5-pro": "Gemini 2.5 Pro (best quality)",
 };
 
 export class HandwritingToTextSettingTab extends PluginSettingTab {
@@ -40,6 +42,7 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+		containerEl.addClass("hwt-settings");
 
 		new Setting(containerEl)
 			.setName("Google Gemini API key")
@@ -52,7 +55,7 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.geminiApiKey)
 					.then((t) => {
 						t.inputEl.type = "password";
-						t.inputEl.style.width = "300px";
+						t.inputEl.addClass("hwt-settings-wide-input");
 					})
 					.onChange(async (value) => {
 						this.plugin.settings.geminiApiKey = value;
@@ -62,7 +65,7 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Model")
-			.setDesc("Which Gemini model to use for OCR")
+			.setDesc("Which Gemini model to use for text extraction")
 			.addDropdown((dropdown) => {
 				for (const [value, label] of Object.entries(GEMINI_MODELS)) {
 					dropdown.addOption(value, label);
@@ -75,7 +78,15 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 					});
 			});
 
-		new Setting(containerEl)
+		// Advanced settings behind a disclosure
+		const advancedDetails = containerEl.createEl("details", {
+			cls: "hwt-settings-advanced",
+		});
+		advancedDetails.createEl("summary", {
+			text: "Advanced settings",
+		});
+
+		new Setting(advancedDetails)
 			.setName("OCR prompt")
 			.setDesc("The instruction sent to Gemini along with the image")
 			.addTextArea((text) =>
@@ -84,7 +95,7 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.ocrPrompt)
 					.then((t) => {
 						t.inputEl.rows = 6;
-						t.inputEl.style.width = "100%";
+						t.inputEl.addClass("hwt-settings-wide-input");
 					})
 					.onChange(async (value) => {
 						this.plugin.settings.ocrPrompt = value;
@@ -92,5 +103,33 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 					})
 			);
 
+		new Setting(advancedDetails)
+			.setName("Page separator")
+			.setDesc(
+				"Separator between pages when processing multiple images"
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("---")
+					.setValue(this.plugin.settings.pageSeparator)
+					.onChange(async (value) => {
+						this.plugin.settings.pageSeparator = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(advancedDetails)
+			.setName("Show page numbers")
+			.setDesc(
+				"Include page numbers in separators (e.g. --- Page 1 ---)"
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.showPageNumbers)
+					.onChange(async (value) => {
+						this.plugin.settings.showPageNumbers = value;
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 }

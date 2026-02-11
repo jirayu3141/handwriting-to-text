@@ -44,13 +44,14 @@ export function getExtension(mimeType: string): string {
  * On macOS, nativeImage delegates to the OS which supports HEIC via ImageIO.
  * Returns null if conversion fails or we're not on Electron (e.g. mobile).
  */
-function convertWithNativeImage(
+async function convertWithNativeImage(
 	buffer: ArrayBuffer
-): { buffer: ArrayBuffer; mimeType: string } | null {
+): Promise<{ buffer: ArrayBuffer; mimeType: string } | null> {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		const { nativeImage } = require("electron");
-		const img = nativeImage.createFromBuffer(Buffer.from(buffer));
+		const electron = await import("electron");
+		const img = electron.nativeImage.createFromBuffer(
+			Buffer.from(buffer)
+		);
 		if (img.isEmpty()) return null;
 		const jpegBuffer = img.toJPEG(85);
 		return {
@@ -119,7 +120,7 @@ async function bitmapToJpeg(
 		});
 	} else {
 		resultBlob = await new Promise<Blob>((resolve) => {
-			(canvas as HTMLCanvasElement).toBlob(
+			canvas.toBlob(
 				(b) => resolve(b!),
 				"image/jpeg",
 				0.85
@@ -176,7 +177,7 @@ export async function normalizeImage(
 
 	// createImageBitmap failed (e.g. HEIC on Chromium) — try Electron's nativeImage
 	if (needsConversion) {
-		const converted = convertWithNativeImage(buffer);
+		const converted = await convertWithNativeImage(buffer);
 		if (converted) {
 			// Recurse to also handle resize if needed
 			return normalizeImage(converted.buffer, converted.mimeType);

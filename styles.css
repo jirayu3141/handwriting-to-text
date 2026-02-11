@@ -1,60 +1,225 @@
-/* Journal OCR Modal */
+/* ═══════════════════════════════════════════════════════════════════
+   Handwriting to Text — Obsidian Plugin Styles
+   Mobile-first design: primarily used on phones for journal scanning.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Modal Shell ─────────────────────────────────────────────────── */
+
 .hwt-modal {
-	max-width: 600px;
+	max-width: 520px;
+	margin-left: 12px;
+	margin-right: 12px;
 }
 
 .hwt-modal .modal-content {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	padding: 16px 0;
+	padding: 16px;
 }
 
-/* Image Selection State */
-.hwt-drop-zone {
-	border: 2px dashed var(--background-modifier-border);
-	border-radius: 8px;
-	padding: 40px 20px;
+/* ═══════════════════════════════════════════════════════════════════
+   STATE 1 — Image Selection
+   One big button + a subtle vault link. Clean and focused.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.hwt-select-btn {
+	width: 100%;
+	min-height: 52px;
+	font-size: 16px;
+}
+
+.hwt-vault-link {
 	text-align: center;
+	font-size: 13px;
+	color: var(--text-faint);
 	cursor: pointer;
-	transition: border-color 0.2s, background-color 0.2s;
+	padding: 4px 0;
 }
 
-.hwt-drop-zone:hover,
-.hwt-drop-zone.drag-over {
+.hwt-vault-link:hover {
+	color: var(--text-muted);
+	text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STATE 2 — Image Queue
+   Clean thumbnail list. Reorder controls only appear for 2+ images.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.hwt-queue-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+.hwt-queue-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+}
+
+/* Thumbnail */
+.hwt-queue-thumb {
+	width: 52px;
+	height: 52px;
+	min-width: 52px;
+	object-fit: cover;
+	border-radius: 6px;
+	display: block;
+	background-color: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+}
+
+/* Page label — simple text, replaces badge + filename */
+.hwt-queue-page-label {
+	flex: 1;
+	font-size: 14px;
+	color: var(--text-normal);
+	min-width: 0;
+}
+
+/* Reorder buttons */
+.hwt-queue-reorder {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+.hwt-queue-move-btn {
+	width: 34px;
+	height: 30px;
+	min-height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	line-height: 1;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	color: var(--text-faint);
+	cursor: pointer;
+	padding: 0;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.hwt-queue-move-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.hwt-queue-move-btn:active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
 	border-color: var(--interactive-accent);
+}
+
+.hwt-queue-move-btn:disabled {
+	opacity: 0.2;
+	cursor: default;
+	pointer-events: none;
+}
+
+/* Remove button */
+.hwt-queue-remove {
+	width: 34px;
+	height: 34px;
+	min-width: 34px;
+	min-height: 34px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	line-height: 1;
+	border: none;
+	border-radius: 6px;
+	background-color: transparent;
+	color: var(--text-faint);
+	cursor: pointer;
+	padding: 0;
+	flex-shrink: 0;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.hwt-queue-remove:hover,
+.hwt-queue-remove:active {
+	background-color: var(--background-modifier-error);
+	color: var(--text-on-accent);
+}
+
+/* Queue actions */
+.hwt-queue-actions {
+	display: flex;
+	gap: 8px;
+	flex-direction: column;
+	padding-top: 4px;
+}
+
+.hwt-queue-actions button {
+	min-height: 44px;
+	font-size: 15px;
+}
+
+.hwt-queue-actions button.mod-cta {
+	order: -1;
+}
+
+.hwt-queue-add-btn {
+	min-height: 44px;
+	font-size: 14px;
+	cursor: pointer;
+	color: var(--interactive-accent);
+	background: none;
+	border: 1px dashed var(--background-modifier-border);
+	padding: 6px 14px;
+	border-radius: 6px;
+	transition: background-color 0.15s ease;
+}
+
+.hwt-queue-add-btn:hover {
 	background-color: var(--background-modifier-hover);
 }
 
-.hwt-drop-zone-text {
-	color: var(--text-muted);
-	font-size: 14px;
+@media (min-width: 400px) {
+	.hwt-queue-actions {
+		flex-direction: row;
+		justify-content: flex-end;
+	}
+
+	.hwt-queue-actions button.mod-cta {
+		order: 0;
+		min-width: 160px;
+	}
+
+	.hwt-queue-actions .hwt-queue-add-btn {
+		margin-right: auto;
+	}
 }
 
-.hwt-buttons {
-	display: flex;
-	gap: 8px;
-	justify-content: center;
-	flex-wrap: wrap;
-}
+/* ═══════════════════════════════════════════════════════════════════
+   STATE 3 — Processing
+   Spinner + status text. That's it.
+   ═══════════════════════════════════════════════════════════════════ */
 
-.hwt-buttons button {
-	flex: 1;
-	min-width: 120px;
-}
-
-/* Processing State */
 .hwt-processing {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	gap: 16px;
-	padding: 20px;
+	padding: 32px 8px;
 }
 
 .hwt-spinner {
-	width: 32px;
-	height: 32px;
+	width: 28px;
+	height: 28px;
 	border: 3px solid var(--background-modifier-border);
 	border-top-color: var(--interactive-accent);
 	border-radius: 50%;
@@ -70,18 +235,14 @@
 .hwt-processing-text {
 	color: var(--text-muted);
 	font-size: 14px;
+	text-align: center;
 }
 
-/* Image Preview */
-.hwt-image-preview {
-	max-width: 100%;
-	max-height: 200px;
-	object-fit: contain;
-	border-radius: 6px;
-	border: 1px solid var(--background-modifier-border);
-}
+/* ═══════════════════════════════════════════════════════════════════
+   STATE 4 — Preview / Edit
+   Textarea + insert button. Clean.
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* Preview/Edit State */
 .hwt-preview {
 	display: flex;
 	flex-direction: column;
@@ -94,7 +255,7 @@
 	max-height: 400px;
 	resize: vertical;
 	font-family: var(--font-text);
-	font-size: 14px;
+	font-size: 15px;
 	line-height: 1.5;
 	padding: 12px;
 	border: 1px solid var(--background-modifier-border);
@@ -108,21 +269,63 @@
 	outline: none;
 }
 
+/* ─── Action Buttons (shared) ────────────────────────────────────── */
+
 .hwt-actions {
 	display: flex;
 	gap: 8px;
-	justify-content: flex-end;
+	flex-direction: column;
 }
 
-.hwt-actions button.mod-cta {
-	min-width: 140px;
+.hwt-actions button {
+	min-height: 44px;
+	font-size: 15px;
 }
 
-/* Error State */
+@media (min-width: 400px) {
+	.hwt-actions {
+		flex-direction: row;
+		justify-content: flex-end;
+	}
+
+	.hwt-actions button.mod-cta {
+		min-width: 160px;
+	}
+}
+
+/* ─── Error State ────────────────────────────────────────────────── */
+
 .hwt-error {
 	color: var(--text-error);
 	background-color: var(--background-modifier-error);
 	padding: 12px;
 	border-radius: 6px;
 	font-size: 13px;
+}
+
+.hwt-error-actions {
+	margin-top: 16px;
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────── */
+
+.hwt-hidden {
+	display: none;
+}
+
+/* ─── Settings ───────────────────────────────────────────────────── */
+
+.hwt-settings-wide-input {
+	width: 100%;
+}
+
+.hwt-settings-advanced {
+	margin-top: 12px;
+}
+
+.hwt-settings-advanced summary {
+	cursor: pointer;
+	color: var(--text-muted);
+	font-size: 14px;
+	padding: 8px 0;
 }

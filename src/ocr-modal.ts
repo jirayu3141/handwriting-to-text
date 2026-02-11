@@ -6,7 +6,7 @@ import {
 	Notice,
 	TFile,
 } from "obsidian";
-import { GeminiClient } from "./gemini";
+import { GeminiClient, type ImagePart } from "./gemini";
 import type { HandwritingToTextSettings } from "./settings";
 import {
 	arrayBufferToBase64,
@@ -42,23 +42,30 @@ class VaultImagePicker extends FuzzySuggestModal<TFile> {
 	}
 }
 
+// ─── Image Item Interface ────────────────────────────────────────────
+
+interface ImageItem {
+	id: string;
+	buffer: ArrayBuffer;
+	mimeType: string;
+	filename: string;
+	status: "pending" | "processing" | "done" | "error";
+	extractedText?: string;
+	error?: string;
+	thumbnailUrl?: string;
+}
+
 // ─── Main OCR Modal ──────────────────────────────────────────────────
 
-type ModalState = "select" | "processing" | "preview";
+type ModalState = "select" | "queue" | "processing" | "preview";
 
 export class OcrModal extends Modal {
 	private settings: HandwritingToTextSettings;
 	private editor: Editor;
-
 	private state: ModalState = "select";
-
-	// Image data
-	private imageBuffer: ArrayBuffer | null = null;
-	private imageMimeType = "image/jpeg";
-	private imageFilename = "";
-
-	// Extracted text
-	private extractedText = "";
+	private images: ImageItem[] = [];
+	private combinedText = "";
+	private objectUrls: string[] = [];
 
 	constructor(
 		app: App,
@@ -71,240 +78,471 @@ export class OcrModal extends Modal {
 		this.modalEl.addClass("hwt-modal");
 	}
 
-	onOpen() {
+	onOpen(): void {
 		this.renderSelect();
 	}
 
-	onClose() {
+	onClose(): void {
 		this.contentEl.empty();
-		this.imageBuffer = null;
+		this.revokeAllUrls();
+		this.images = [];
+	}
+
+	private revokeAllUrls(): void {
+		for (const url of this.objectUrls) {
+			URL.revokeObjectURL(url);
+		}
+		this.objectUrls = [];
+		for (const img of this.images) {
+			if (img.thumbnailUrl) {
+				URL.revokeObjectURL(img.thumbnailUrl);
+				img.thumbnailUrl = undefined;
+			}
+		}
+	}
+
+	private createObjectUrl(blob: Blob): string {
+		const url = URL.createObjectURL(blob);
+		this.objectUrls.push(url);
+		return url;
+	}
+
+	private generateId(): string {
+		return (
+			Date.now().toString(36) +
+			Math.random().toString(36).slice(2, 8)
+		);
 	}
 
 	/**
-	 * Start processing with an image already loaded (used by clipboard command).
+	 * Start with a single pre-loaded image (used by clipboard command).
+	 * Goes directly to processing — no queue screen.
 	 */
-	startWithImage(buffer: ArrayBuffer, mimeType: string, filename: string) {
-		this.imageBuffer = buffer;
-		this.imageMimeType = mimeType;
-		this.imageFilename = filename;
-		this.processImage();
+	startWithImage(
+		buffer: ArrayBuffer,
+		mimeType: string,
+		filename: string
+	): void {
+		this.images = [
+			{
+				id: this.generateId(),
+				buffer,
+				mimeType,
+				filename,
+				status: "pending",
+			},
+		];
+		void this.processAllImages();
 	}
 
 	// ─── State 1: Image Selection ────────────────────────────────────
 
-	private renderSelect() {
+	private renderSelect(): void {
 		this.state = "select";
 		const { contentEl } = this;
 		contentEl.empty();
-		this.setTitle("Scan Handwriting");
-
-		const container = contentEl.createDiv({
-			cls: "hwt-drop-zone",
-		});
-
-		container.createDiv({
-			cls: "hwt-drop-zone-text",
-			text: "Drop an image here, or use the buttons below",
-		});
+		this.setTitle("Scan handwriting");
 
 		// Hidden file input
-		const fileInput = container.createEl("input", { type: "file" });
+		const fileInput = contentEl.createEl("input", { type: "file" });
 		fileInput.accept = "image/*";
-		fileInput.style.display = "none";
+		fileInput.multiple = true;
+		fileInput.addClass("hwt-hidden");
 		fileInput.addEventListener("change", () => {
-			const file = fileInput.files?.[0];
-			if (file) this.handleFile(file);
-		});
-
-		// Click the drop zone to open file picker
-		container.addEventListener("click", () => fileInput.click());
-
-		// Drag & drop
-		container.addEventListener("dragover", (e) => {
-			e.preventDefault();
-			container.addClass("drag-over");
-		});
-		container.addEventListener("dragleave", () => {
-			container.removeClass("drag-over");
-		});
-		container.addEventListener("drop", (e) => {
-			e.preventDefault();
-			container.removeClass("drag-over");
-			const file = e.dataTransfer?.files[0];
-			if (file && file.type.startsWith("image/")) {
-				this.handleFile(file);
+			if (fileInput.files && fileInput.files.length > 0) {
+				void this.handleFiles(Array.from(fileInput.files));
 			}
 		});
 
-		// Buttons
-		const buttons = contentEl.createDiv({ cls: "hwt-buttons" });
-
-		const chooseBtn = buttons.createEl("button", { text: "Choose Image" });
+		// Primary action
+		const chooseBtn = contentEl.createEl("button", {
+			text: "Choose images",
+			cls: "hwt-select-btn mod-cta",
+		});
 		chooseBtn.addEventListener("click", () => fileInput.click());
 
-		const vaultBtn = buttons.createEl("button", {
-			text: "Select from Vault",
+		// Subtle vault link
+		const vaultLink = contentEl.createDiv({ cls: "hwt-vault-link" });
+		vaultLink.setText("or select from vault");
+		vaultLink.addEventListener("click", () => {
+			new VaultImagePicker(this.app, (f) =>
+				void this.handleVaultFile(f)
+			).open();
 		});
-		vaultBtn.addEventListener("click", () => {
-			const picker = new VaultImagePicker(this.app, (vaultFile) => {
-				this.handleVaultFile(vaultFile);
+
+		// Silent drag-and-drop support for desktop
+		contentEl.addEventListener("dragover", (e) => {
+			e.preventDefault();
+		});
+		contentEl.addEventListener("drop", (e) => {
+			e.preventDefault();
+			const files = e.dataTransfer?.files;
+			if (files && files.length > 0) {
+				const imageFiles = Array.from(files).filter((f) =>
+					f.type.startsWith("image/")
+				);
+				if (imageFiles.length > 0) {
+					void this.handleFiles(imageFiles);
+				}
+			}
+		});
+	}
+
+	private async handleFiles(files: File[]): Promise<void> {
+		for (const file of files) {
+			const buffer = await file.arrayBuffer();
+			const mimeType = file.type || getMimeType(file.name);
+			this.images.push({
+				id: this.generateId(),
+				buffer,
+				mimeType,
+				filename: file.name,
+				status: "pending",
 			});
-			picker.open();
+		}
+		await this.renderQueue();
+	}
+
+	private async handleVaultFile(file: TFile): Promise<void> {
+		const buffer = await this.app.vault.readBinary(file);
+		const mimeType = getMimeType(file.name);
+		this.images.push({
+			id: this.generateId(),
+			buffer,
+			mimeType,
+			filename: file.name,
+			status: "pending",
 		});
+		await this.renderQueue();
 	}
 
-	private async handleFile(file: File) {
-		this.imageBuffer = await file.arrayBuffer();
-		this.imageMimeType = file.type || getMimeType(file.name);
-		this.imageFilename = file.name;
-		this.processImage();
+	// ─── State 2: Image Queue ────────────────────────────────────────
+
+	private async renderQueue(): Promise<void> {
+		this.state = "queue";
+		const { contentEl } = this;
+		contentEl.empty();
+
+		const total = this.images.length;
+		this.setTitle(
+			`${total} ${total === 1 ? "page" : "pages"} ready`
+		);
+
+		await this.ensureThumbnails();
+
+		// Queue list
+		const list = contentEl.createDiv({ cls: "hwt-queue-list" });
+		this.renderQueueList(list);
+
+		// Hidden file input for "Add more"
+		const addInput = contentEl.createEl("input", { type: "file" });
+		addInput.accept = "image/*";
+		addInput.multiple = true;
+		addInput.addClass("hwt-hidden");
+		addInput.addEventListener("change", () => {
+			if (addInput.files && addInput.files.length > 0) {
+				void this.addMoreFiles(Array.from(addInput.files));
+			}
+		});
+
+		// Actions
+		const actions = contentEl.createDiv({ cls: "hwt-queue-actions" });
+
+		const addMoreBtn = actions.createEl("button", {
+			cls: "hwt-queue-add-btn",
+			text: "+ Add more",
+		});
+		addMoreBtn.addEventListener("click", () => addInput.click());
+
+		const processBtn = actions.createEl("button", {
+			text: "Extract text",
+			cls: "mod-cta",
+		});
+		processBtn.addEventListener("click", () =>
+			void this.processAllImages()
+		);
 	}
 
-	private async handleVaultFile(file: TFile) {
-		this.imageBuffer = await this.app.vault.readBinary(file);
-		this.imageMimeType = getMimeType(file.name);
-		this.imageFilename = file.name;
-		this.processImage();
+	private async ensureThumbnails(): Promise<void> {
+		for (const item of this.images) {
+			if (item.thumbnailUrl) continue;
+			try {
+				const normalized = await normalizeImage(
+					item.buffer,
+					item.mimeType
+				);
+				item.buffer = normalized.buffer;
+				item.mimeType = normalized.mimeType;
+			} catch {
+				// Use raw buffer if normalization fails
+			}
+			const blob = new Blob([item.buffer], { type: item.mimeType });
+			item.thumbnailUrl = this.createObjectUrl(blob);
+		}
 	}
 
-	// ─── State 2: Processing ─────────────────────────────────────────
+	private async addMoreFiles(files: File[]): Promise<void> {
+		for (const file of files) {
+			const buffer = await file.arrayBuffer();
+			const mimeType = file.type || getMimeType(file.name);
+			this.images.push({
+				id: this.generateId(),
+				buffer,
+				mimeType,
+				filename: file.name,
+				status: "pending",
+			});
+		}
+		await this.renderQueue();
+	}
 
-	private async processImage() {
-		if (!this.imageBuffer) return;
+	private renderQueueList(list: HTMLElement): void {
+		list.empty();
+
+		const showReorder = this.images.length > 1;
+
+		for (let i = 0; i < this.images.length; i++) {
+			const item = this.images[i];
+			const row = list.createDiv({ cls: "hwt-queue-item" });
+
+			// Thumbnail
+			if (item.thumbnailUrl) {
+				const thumb = row.createEl("img", {
+					cls: "hwt-queue-thumb",
+				});
+				thumb.src = item.thumbnailUrl;
+				thumb.alt = `Page ${i + 1}`;
+			}
+
+			// Page label
+			row.createDiv({
+				cls: "hwt-queue-page-label",
+				text: `Page ${i + 1}`,
+			});
+
+			// Reorder buttons — only when 2+ images
+			if (showReorder) {
+				const reorder = row.createDiv({
+					cls: "hwt-queue-reorder",
+				});
+
+				const upBtn = reorder.createEl("button", {
+					cls: "hwt-queue-move-btn",
+					text: "\u2191",
+				});
+				upBtn.setAttribute("aria-label", "Move up");
+				if (i === 0) {
+					upBtn.disabled = true;
+				} else {
+					upBtn.addEventListener("click", () => {
+						this.swapImages(i, i - 1);
+						this.renderQueueList(list);
+					});
+				}
+
+				const downBtn = reorder.createEl("button", {
+					cls: "hwt-queue-move-btn",
+					text: "\u2193",
+				});
+				downBtn.setAttribute("aria-label", "Move down");
+				if (i === this.images.length - 1) {
+					downBtn.disabled = true;
+				} else {
+					downBtn.addEventListener("click", () => {
+						this.swapImages(i, i + 1);
+						this.renderQueueList(list);
+					});
+				}
+			}
+
+			// Remove button
+			const removeBtn = row.createEl("button", {
+				cls: "hwt-queue-remove",
+				text: "\u00D7",
+			});
+			removeBtn.setAttribute("aria-label", "Remove");
+			removeBtn.addEventListener("click", () => {
+				this.images.splice(i, 1);
+				if (this.images.length === 0) {
+					this.renderSelect();
+				} else {
+					void this.renderQueue();
+				}
+			});
+		}
+	}
+
+	private swapImages(a: number, b: number): void {
+		const temp = this.images[a];
+		this.images[a] = this.images[b];
+		this.images[b] = temp;
+	}
+
+	// ─── State 3: Processing ─────────────────────────────────────────
+
+	private async processAllImages(): Promise<void> {
+		if (this.images.length === 0) return;
+
+		if (!this.settings.geminiApiKey) {
+			this.renderError(
+				"No API key configured. Please set your Gemini API key in the plugin settings."
+			);
+			return;
+		}
 
 		this.state = "processing";
 		const { contentEl } = this;
 		contentEl.empty();
-		this.setTitle("Extracting Text...");
 
-		const container = contentEl.createDiv({
-			cls: "hwt-processing",
-		});
+		const total = this.images.length;
+		const isMulti = total > 1;
 
-		// Image thumbnail
-		const normalized = await normalizeImage(this.imageBuffer, this.imageMimeType);
-		this.imageBuffer = normalized.buffer;
-		this.imageMimeType = normalized.mimeType;
+		this.setTitle("Extracting text...");
 
-		const blob = new Blob([this.imageBuffer], {
-			type: this.imageMimeType,
-		});
-		const objectUrl = URL.createObjectURL(blob);
-
-		const img = container.createEl("img", {
-			cls: "hwt-image-preview",
-		});
-		img.addEventListener("error", () => {
-			URL.revokeObjectURL(objectUrl);
-			img.remove();
-		});
-		img.src = objectUrl;
-
+		const container = contentEl.createDiv({ cls: "hwt-processing" });
 		container.createDiv({ cls: "hwt-spinner" });
+
 		container.createDiv({
 			cls: "hwt-processing-text",
-			text: "Sending image to Gemini...",
+			text: isMulti
+				? `Sending ${total} pages to Gemini...`
+				: "Sending image to Gemini...",
 		});
 
-		try {
-			const base64 = arrayBufferToBase64(this.imageBuffer);
-			const client = new GeminiClient(
-				this.settings.geminiApiKey,
-				this.settings.model
-			);
-			this.extractedText = await client.extractText(
-				base64,
-				this.imageMimeType,
-				this.settings.ocrPrompt
-			);
-			URL.revokeObjectURL(objectUrl);
-			this.renderPreview();
-		} catch (err: unknown) {
-			URL.revokeObjectURL(objectUrl);
-			const message =
-				err instanceof Error ? err.message : "Unknown error";
-			this.renderError(message);
+		// Normalize all images and build the parts array
+		const imageParts: ImagePart[] = [];
+		for (const item of this.images) {
+			item.status = "processing";
+			try {
+				const normalized = await normalizeImage(
+					item.buffer,
+					item.mimeType
+				);
+				item.buffer = normalized.buffer;
+				item.mimeType = normalized.mimeType;
+			} catch {
+				// Use raw buffer if normalization fails
+			}
+
+			if (!item.thumbnailUrl) {
+				const blob = new Blob([item.buffer], {
+					type: item.mimeType,
+				});
+				item.thumbnailUrl = this.createObjectUrl(blob);
+			}
+
+			imageParts.push({
+				base64: arrayBufferToBase64(item.buffer),
+				mimeType: item.mimeType,
+			});
 		}
+
+		// Build prompt
+		let prompt = this.settings.ocrPrompt;
+		if (isMulti) {
+			const sep = this.settings.pageSeparator || "---";
+			const showNums = this.settings.showPageNumbers !== false;
+			prompt +=
+				`\n\nYou are receiving ${total} images. They are consecutive pages of the same document, in order (image 1 = page 1, image 2 = page 2, etc.).` +
+				` Transcribe each page. Between pages, insert a separator line.` +
+				(showNums
+					? ` Use this exact format for separators: "${sep} Page N ${sep}" where N is the page number.`
+					: ` Use this exact separator: "${sep}".`) +
+				` Do not add a separator before the first page.`;
+		}
+
+		const client = new GeminiClient(
+			this.settings.geminiApiKey,
+			this.settings.model
+		);
+
+		try {
+			this.combinedText = await client.extractTextFromImages(
+				imageParts,
+				prompt
+			);
+			for (const item of this.images) {
+				item.status = "done";
+			}
+		} catch (err: unknown) {
+			const msg =
+				err instanceof Error ? err.message : "Unknown error";
+			for (const item of this.images) {
+				item.status = "error";
+				item.error = msg;
+			}
+			this.combinedText = "";
+		}
+
+		this.renderPreview();
 	}
 
-	// ─── State 3: Preview & Insert ───────────────────────────────────
+	// ─── State 4: Preview & Insert ───────────────────────────────────
 
-	private renderPreview() {
+	private renderPreview(): void {
 		this.state = "preview";
 		const { contentEl } = this;
 		contentEl.empty();
-		this.setTitle("Review Transcription");
 
-		const preview = contentEl.createDiv({ cls: "hwt-preview" });
+		const hasErrors = this.images.some(
+			(img) => img.status === "error"
+		);
 
-		// Image thumbnail — hide if the browser can't decode it (e.g. HEIC)
-		if (this.imageBuffer) {
-			const blob = new Blob([this.imageBuffer], {
-				type: this.imageMimeType,
-			});
-			const objectUrl = URL.createObjectURL(blob);
-			const img = preview.createEl("img", {
-				cls: "hwt-image-preview",
-			});
-			img.addEventListener("error", () => {
-				URL.revokeObjectURL(objectUrl);
-				img.remove();
-			});
-			img.src = objectUrl;
+		if (hasErrors) {
+			this.setTitle("Something went wrong");
+			contentEl
+				.createDiv({ cls: "hwt-error" })
+				.setText(
+					"Failed to process images. Please close and try again."
+				);
+		} else {
+			this.setTitle("Review text");
 		}
 
 		// Editable textarea
-		const textarea = preview.createEl("textarea", {
+		const textarea = contentEl.createEl("textarea", {
 			cls: "hwt-textarea",
 		});
-		textarea.value = this.extractedText;
+		textarea.value = this.combinedText;
 		textarea.addEventListener("input", () => {
-			this.extractedText = textarea.value;
+			this.combinedText = textarea.value;
 		});
 
-		// Action buttons
-		const actions = preview.createDiv({ cls: "hwt-actions" });
-
-		const reExtractBtn = actions.createEl("button", {
-			text: "Re-extract",
-		});
-		reExtractBtn.addEventListener("click", () => this.processImage());
+		// Single action
+		const actions = contentEl.createDiv({ cls: "hwt-actions" });
 
 		const insertBtn = actions.createEl("button", {
-			text: "Insert into Note",
+			text: "Insert into note",
 			cls: "mod-cta",
 		});
 		insertBtn.addEventListener("click", () => this.insertIntoNote());
 	}
 
-	// ─── Insert Logic ────────────────────────────────────────────────
+	// ─── Insert & Error ──────────────────────────────────────────────
 
-	private insertIntoNote() {
-		this.editor.replaceSelection(this.extractedText);
+	private insertIntoNote(): void {
+		this.editor.replaceSelection(this.combinedText);
 		this.close();
-		new Notice("Text inserted successfully");
+		new Notice("Text inserted!");
 	}
 
-	// ─── Error State ─────────────────────────────────────────────────
-
-	private renderError(message: string) {
+	private renderError(message: string): void {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.setTitle("Error");
 
-		const errorDiv = contentEl.createDiv({ cls: "hwt-error" });
-		errorDiv.setText(message);
+		contentEl.createDiv({ cls: "hwt-error", text: message });
 
-		const actions = contentEl.createDiv({ cls: "hwt-actions" });
-		actions.style.marginTop = "16px";
-
-		const backBtn = actions.createEl("button", { text: "Back" });
-		backBtn.addEventListener("click", () => this.renderSelect());
+		const actions = contentEl.createDiv({
+			cls: "hwt-actions hwt-error-actions",
+		});
 
 		const retryBtn = actions.createEl("button", {
 			text: "Retry",
 			cls: "mod-cta",
 		});
-		retryBtn.addEventListener("click", () => this.processImage());
+		retryBtn.addEventListener("click", () =>
+			void this.processAllImages()
+		);
 	}
 }
