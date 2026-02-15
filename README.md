@@ -60,3 +60,4 @@ Photograph your handwritten notes, journal entries, or anything on paper — the
 ## License
 
 [MIT](LICENSE)
+
