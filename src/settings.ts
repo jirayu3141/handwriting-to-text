@@ -45,9 +45,9 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 		containerEl.addClass("hwt-settings");
 
 		new Setting(containerEl)
-			.setName("Google Gemini API key")
+			.setName("API key")
 			.setDesc(
-				"Get your API key from Google AI Studio (aistudio.google.com)"
+				"Get a free key at aistudio.google.com"
 			)
 			.addText((text) =>
 				text
@@ -65,7 +65,7 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Model")
-			.setDesc("Which Gemini model to use for text extraction")
+			.setDesc("Which model to use for text extraction")
 			.addDropdown((dropdown) => {
 				for (const [value, label] of Object.entries(GEMINI_MODELS)) {
 					dropdown.addOption(value, label);
@@ -87,11 +87,11 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(advancedDetails)
-			.setName("OCR prompt")
-			.setDesc("The instruction sent to Gemini along with the image")
+			.setName("Prompt")
+			.setDesc("The instruction sent along with the image")
 			.addTextArea((text) =>
 				text
-					.setPlaceholder("Enter your OCR prompt")
+					.setPlaceholder("Enter your prompt")
 					.setValue(this.plugin.settings.ocrPrompt)
 					.then((t) => {
 						t.inputEl.rows = 6;
@@ -121,7 +121,7 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 		new Setting(advancedDetails)
 			.setName("Show page numbers")
 			.setDesc(
-				"Include page numbers in separators (e.g. --- Page 1 ---)"
+				"Include page numbers in separators (e.g. --- page 1 ---)"
 			)
 			.addToggle((toggle) =>
 				toggle

@@ -163,7 +163,7 @@ export class OcrModal extends Modal {
 
 		// Subtle vault link
 		const vaultLink = contentEl.createDiv({ cls: "hwt-vault-link" });
-		vaultLink.setText("or select from vault");
+		vaultLink.setText("Or select from vault");
 		vaultLink.addEventListener("click", () => {
 			new VaultImagePicker(this.app, (f) =>
 				void this.handleVaultFile(f)
@@ -250,7 +250,7 @@ export class OcrModal extends Modal {
 
 		const addMoreBtn = actions.createEl("button", {
 			cls: "hwt-queue-add-btn",
-			text: "+ Add more",
+			text: "+ add more",
 		});
 		addMoreBtn.addEventListener("click", () => addInput.click());
 

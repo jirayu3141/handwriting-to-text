@@ -51,7 +51,7 @@ export class GeminiClient {
 	): Promise<string> {
 		if (!this.apiKey) {
 			new Notice(
-				"No API key configured. Please set your Gemini API key in the plugin settings."
+				"No API key configured. Please add your key in the plugin settings."
 			);
 			throw new Error("Missing Gemini API key");
 		}
