@@ -440,15 +440,26 @@ export class OcrModal extends Modal {
 		// Build prompt
 		let prompt = this.settings.ocrPrompt;
 		if (isMulti) {
-			const sep = this.settings.pageSeparator || "---";
+			const sep = this.settings.pageSeparator ?? "---";
 			const showNums = this.settings.showPageNumbers !== false;
 			prompt +=
 				`\n\nYou are receiving ${total} images. They are consecutive pages of the same document, in order (image 1 = page 1, image 2 = page 2, etc.).` +
-				` Transcribe each page. Between pages, insert a separator line.` +
-				(showNums
-					? ` Use this exact format for separators: "${sep} Page N ${sep}" where N is the page number.`
-					: ` Use this exact separator: "${sep}".`) +
-				` Do not add a separator before the first page.`;
+				` Transcribe each page.`;
+
+			if (sep.trim() === "") {
+				prompt +=
+					` Do not insert any separator or heading between pages — merge all pages into one continuous flow of text.`;
+			} else {
+				prompt +=
+					` Between pages, insert a separator line.` +
+					(showNums
+						? ` Use this exact format for separators: "${sep} Page N ${sep}" where N is the page number.`
+						: ` Use this exact separator: "${sep}".`) +
+					` Do not add a separator before the first page.`;
+			}
+
+			prompt +=
+				` Remember: join words that continue on the next line into flowing sentences — do NOT insert line breaks just because the handwriting reaches the edge of the page. Only start a new paragraph when the writer clearly intended one.`;
 		}
 
 		const client = new GeminiClient(
