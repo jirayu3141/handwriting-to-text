@@ -1,6 +1,6 @@
 {
 	"name": "handwriting-to-text",
-	"version": "1.1.1",
+	"version": "1.2.0",
 	"description": "Obsidian plugin: transcribe handwritten pages into text with Google Gemini",
 	"main": "main.js",
 	"scripts": {

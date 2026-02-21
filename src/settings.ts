@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type HandwritingToTextPlugin from "./main";
 
 export interface HandwritingToTextSettings {
@@ -129,6 +129,25 @@ export class HandwritingToTextSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.showPageNumbers = value;
 						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(advancedDetails)
+			.setName("Reset to defaults")
+			.setDesc("Restore all settings to their original values (keeps your API key)")
+			.addButton((button) =>
+				button
+					.setButtonText("Reset")
+					.setWarning()
+					.onClick(async () => {
+						const apiKey = this.plugin.settings.geminiApiKey;
+						this.plugin.settings = {
+							...DEFAULT_SETTINGS,
+							geminiApiKey: apiKey,
+						};
+						await this.plugin.saveSettings();
+						this.display();
+						new Notice("Settings restored to defaults");
 					})
 			);
 	}
